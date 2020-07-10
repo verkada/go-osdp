@@ -12,7 +12,7 @@ import (
 	"github.com/HowardDunn/go-osdp/osdp"
 )
 
-var osdpConnection *osdp.OSDPConnection
+var osdpMessenger *osdp.OSDPMessenger
 
 const (
 	osdpMessageFrequencyMS time.Duration = 200
@@ -26,10 +26,11 @@ func handleOSDPResponse(osdpMessage *osdp.OSDPMessage) error {
 }
 
 func startCommunication(ctx context.Context, outgoingMessageChan chan *osdp.OSDPMessage) {
+
 	ticker := time.NewTicker(osdpMessageFrequencyMS * time.Millisecond)
 
 	executeOSDPCycle := func(outgoingMessage *osdp.OSDPMessage, timeout time.Duration) {
-		osdpResponse, err := osdpConnection.SendAndReceive(outgoingMessage, timeout)
+		osdpResponse, err := osdpMessenger.SendAndReceive(outgoingMessage, timeout)
 		if err != nil {
 			log.Fatal("Unable to Send and Receive")
 		}
@@ -51,7 +52,8 @@ func startCommunication(ctx context.Context, outgoingMessageChan chan *osdp.OSDP
 }
 
 func Run() {
-	osdpConnection = osdp.NewOSDPConnection(nil)
+
+	osdpMessenger = osdp.NewOSDPMessenger(nil)
 	var (
 		wg          sync.WaitGroup
 		ctx, cancel = context.WithCancel(context.Background())
