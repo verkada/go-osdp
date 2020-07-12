@@ -1,12 +1,12 @@
 package osdp
 
 type OSDPMessage struct {
-	osdpCommand       OSDPCommand
+	osdpCode          OSDPCode
 	peripheralAddress byte
 	messageData       []byte
 }
 
-func NewOSDPMessage(osdpCommand OSDPCommand, peripheralAddress byte, messageData []byte) *OSDPMessage {
+func NewOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, messageData []byte) *OSDPMessage {
 
-	return &OSDPMessage{osdpCommand: osdpCommand, peripheralAddress: peripheralAddress, messageData: messageData}
+	return &OSDPMessage{osdpCode: osdpCode, peripheralAddress: peripheralAddress, messageData: messageData}
 }
