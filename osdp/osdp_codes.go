@@ -1,0 +1,50 @@
+package osdp
+
+type OSDPCode byte
+
+const (
+	CMD_POLL     OSDPCode = 0x60
+	CMD_ID       OSDPCode = 0x61
+	CMD_CAP      OSDPCode = 0x62
+	CMD_DIAG     OSDPCode = 0x63
+	CMD_LSTAT    OSDPCode = 0x64
+	CMD_ISTAT    OSDPCode = 0x65
+	CMD_OSTAT    OSDPCode = 0x66
+	CMD_RSTAT    OSDPCode = 0x67
+	CMD_OUT      OSDPCode = 0x68
+	CMD_LED      OSDPCode = 0x69
+	CMD_BUZ      OSDPCode = 0x6A
+	CMD_TEXT     OSDPCode = 0x6B
+	CMD_COMSET   OSDPCode = 0x6E
+	CMD_DATA     OSDPCode = 0x6F
+	CMD_PROMPT   OSDPCode = 0x71
+	CMD_BIOREAD  OSDPCode = 0x73
+	CMD_BIOMATCH OSDPCode = 0x74
+	CMD_KEYSET   OSDPCode = 0x75
+	CMD_CHLNG    OSDPCode = 0x76
+	CMD_SCRYPT   OSDPCode = 0x77
+	CMD_ABORT    OSDPCode = 0x7A
+	CMD_MAXREPLY OSDPCode = 0x7B
+	CMD_MFG      OSDPCode = 0x80
+)
+
+const (
+	REPLY_ACK       OSDPCode = 0x40
+	REPLY_NAK       OSDPCode = 0x41
+	REPLY_PDID      OSDPCode = 0x45
+	REPLY_PDCAP     OSDPCode = 0x46
+	REPLY_LSTATR    OSDPCode = 0x48
+	REPLY_IASTR     OSDPCode = 0x49
+	REPLY_OSTATR    OSDPCode = 0x4A
+	REPLY_RSTATR    OSDPCode = 0x4B
+	REPLY_RAW       OSDPCode = 0x50
+	REPLY_FMT       OSDPCode = 0x51
+	REPLY_KEYPAD    OSDPCode = 0x53
+	REPLY_COM       OSDPCode = 0x54
+	REPLY_BIOREADR  OSDPCode = 0x57
+	REPLY_BIOMATCHR OSDPCode = 0x58
+	REPLY_CCRYPT    OSDPCode = 0x76
+	REPLY_MFGREP    OSDPCode = 0x90
+	REPLY_BUSY      OSDPCode = 0x79
+	REPLY_XRD       OSDPCode = 0xB1
+)
