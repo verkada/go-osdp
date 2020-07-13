@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/HowardDunn/go-osdp/osdp"
+	"github.com/stretchr/testify/require"
 )
 
 func Sum(a, b int) int {
@@ -41,10 +40,7 @@ func TestOSDPPacketCreationACK(t *testing.T) {
 
 	correctMessage := []byte{0x53, 0x00, 0x08, 0x00, 0x04, 0x40, 0x89, 0x8E}
 	osdpPacketBytes := osdpPacket.ToBytes()
-	res := bytes.Compare(osdpPacketBytes, correctMessage)
-	if res != 0 {
-		t.Errorf("OSDP Packet bytes malformed")
-	}
+	require.Equal(t, correctMessage, osdpPacketBytes)
 }
 
 func TestOSDPPacketCreationPOLL(t *testing.T) {
@@ -55,10 +51,5 @@ func TestOSDPPacketCreationPOLL(t *testing.T) {
 
 	correctMessage := []byte{0x53, 0x65, 0x08, 0x00, 0x04, 0x60, 0x60, 0x90}
 	osdpPacketBytes := osdpPacket.ToBytes()
-	fmt.Println(osdpPacketBytes)
-	fmt.Println(correctMessage)
-	res := bytes.Compare(osdpPacketBytes, correctMessage)
-	if res != 0 {
-		t.Errorf("OSDP Packet bytes malformed")
-	}
+	require.Equal(t, correctMessage, osdpPacketBytes)
 }
