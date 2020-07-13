@@ -33,7 +33,7 @@ func NewOSDPMessenger(transceiver OSDPTransceiver) *OSDPMessenger {
 
 func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage) error {
 
-	osdpPacket, err := NewOSDPPacket(osdpMessage.osdpCode, osdpMessage.peripheralAddress, osdpMessage.messageData, true)
+	osdpPacket, err := NewPacket(osdpMessage.osdpCode, osdpMessage.peripheralAddress, osdpMessage.messageData, true)
 	if err != nil {
 		return err
 	}

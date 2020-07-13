@@ -33,7 +33,7 @@ const (
 	msgControlSecureMask   byte = 0x08
 )
 
-func NewOSDPPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integrityCheck bool) (*OSDPPacket, error) {
+func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integrityCheck bool) (*OSDPPacket, error) {
 	//TODO: check that arguments meet OSDP spec, assert msgData is the right size
 	if peripheralAddress < minPeripheralAddress || peripheralAddress > maxPeripheralAddress {
 		return nil, errors.New("Peripheral Address out of range")
