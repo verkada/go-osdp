@@ -32,8 +32,8 @@ func TestSum(t *testing.T) {
 	}
 }
 
-func TestOSDPPacketCreationACK(t *testing.T) {
-	osdpPacket, err := osdp.NewOSDPPacket(osdp.REPLY_ACK, 0x00, []byte{}, true)
+func TestPacketCreationACK(t *testing.T) {
+	osdpPacket, err := osdp.NewPacket(osdp.REPLY_ACK, 0x00, []byte{}, true)
 	if err != nil {
 		t.Errorf("Unable to Create OSDP Packet")
 	}
@@ -43,13 +43,28 @@ func TestOSDPPacketCreationACK(t *testing.T) {
 	require.Equal(t, correctMessage, osdpPacketBytes)
 }
 
-func TestOSDPPacketCreationPOLL(t *testing.T) {
-	osdpPacket, err := osdp.NewOSDPPacket(osdp.CMD_POLL, 0x65, []byte{}, true)
+func TestPacketCreationPOLL(t *testing.T) {
+	osdpPacket, err := osdp.NewPacket(osdp.CMD_POLL, 0x65, []byte{}, true)
 	if err != nil {
 		t.Errorf("Unable to Create OSDP Packet")
 	}
 
 	correctMessage := []byte{0x53, 0x65, 0x08, 0x00, 0x04, 0x60, 0x60, 0x90}
+	osdpPacketBytes := osdpPacket.ToBytes()
+	require.Equal(t, correctMessage, osdpPacketBytes)
+}
+
+func TestPacketCreationCardScan(t *testing.T) {
+	card := []byte("00000000010011100011010101")
+	osdpPacket, err := osdp.NewPacket(osdp.CMD_POLL, 0x65, card, true)
+	if err != nil {
+		t.Errorf("Unable to Create OSDP Packet")
+	}
+
+	correctMessage := []byte{0x53, 0x00, 0x22, 0x00, 0x04, 0x50, 0x30, 0x30, 0x30,
+		0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x30, 0x30,
+		0x31, 0x31, 0x31, 0x30, 0x30, 0x30, 0x31, 0x31, 0x30,
+		0x31, 0x30, 0x31, 0x30, 0x31, 0xFE, 0x40}
 	osdpPacketBytes := osdpPacket.ToBytes()
 	require.Equal(t, correctMessage, osdpPacketBytes)
 }

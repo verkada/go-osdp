@@ -33,7 +33,7 @@ func NewOSDPMessenger(transceiver OSDPTransceiver) *OSDPMessenger {
 
 func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage) error {
 
-	osdpPacket, err := NewPacket(osdpMessage.osdpCode, osdpMessage.peripheralAddress, osdpMessage.messageData, true)
+	osdpPacket, err := NewPacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, true)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 
 	receiveChannel := make(chan osdpResponseResult, 1)
 	go func() {
-		responseData, err := osdpMessenger.transceiver.Receive(255) // TODO handle max length correctly
+		responseData, err := osdpMessenger.transceiver.Receive() // TODO handle max length correctly
 		responseResult := osdpResponseResult{responsePayload: responseData, responseErr: err}
 		receiveChannel <- responseResult
 	}()
@@ -54,11 +54,16 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 		if response.responseErr != nil {
 			return nil, response.responseErr
 		}
+		osdpPacket, err := NewPacketFromBytes(response.responsePayload)
+		if err != nil {
+			return nil, err
+		}
+		return &OSDPMessage{MessageCode: OSDPCode(osdpPacket.msgCode),
+			PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData}, nil
 	case <-time.After(timeout * time.Millisecond):
 		return nil, errors.New("OSDPReceiveTimeout")
 	}
-	// TODO convert byte response into osdp Message
-	return &OSDPMessage{}, nil
+
 }
 
 func (osdpMessenger *OSDPMessenger) SendAndReceive(osdpMessage *OSDPMessage, timeout time.Duration) (*OSDPMessage, error) {
