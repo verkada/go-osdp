@@ -1,7 +1,8 @@
-package osdp_example
+package example
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -22,6 +23,14 @@ const (
 
 func handleOSDPResponse(osdpMessage *osdp.OSDPMessage) error {
 
+	switch osdpMessage.MessageCode {
+	case osdp.REPLY_ACK:
+		fmt.Println("Received ACK response", time.Now())
+	case osdp.REPLY_NAK:
+		fmt.Println("Received NAK Response", time.Now())
+	default:
+		fmt.Println("Unhandled response code", time.Now())
+	}
 	return nil
 }
 
@@ -53,7 +62,8 @@ func startCommunication(ctx context.Context, outgoingMessageChan chan *osdp.OSDP
 
 func Run() {
 
-	osdpMessenger = osdp.NewOSDPMessenger(nil)
+	transceiver := NewTransceiver()
+	osdpMessenger = osdp.NewOSDPMessenger(transceiver)
 	var (
 		wg          sync.WaitGroup
 		ctx, cancel = context.WithCancel(context.Background())
@@ -69,8 +79,13 @@ func Run() {
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 
 	s := <-ch
-	log.Print("signal", s, "shutting down")
+	log.Print("signal ", s, " shutting down ")
 	cancel()
 
 	wg.Wait()
+}
+
+func main() {
+
+	Run()
 }
