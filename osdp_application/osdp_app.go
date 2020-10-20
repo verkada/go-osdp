@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/verkada/go-osdp/osdp"
 )
 
@@ -17,16 +15,19 @@ const (
 	peripheralAddress      byte          = 0x00
 )
 
-type OSDPMessageHandler func(osdpMessage *osdp.OSDPMessage)
+type (
+	OSDPMessageHandler func(osdpMessage *osdp.OSDPMessage)
+	ErrorHandler       func(err error)
+)
 
-func StartCommunication(ctx context.Context, transceiver osdp.OSDPTransceiver, osdpHandler OSDPMessageHandler, outgoingMessageChan chan *osdp.OSDPMessage) {
+func StartCommunication(ctx context.Context, transceiver osdp.OSDPTransceiver, osdpHandler OSDPMessageHandler, outgoingMessageChan chan *osdp.OSDPMessage, errorHandler ErrorHandler) {
 	ticker := time.NewTicker(osdpMessageFrequencyMS * time.Millisecond)
 
 	osdpMessenger = osdp.NewOSDPMessenger(transceiver)
 	executeOSDPCycle := func(outgoingMessage *osdp.OSDPMessage, writeTimeout time.Duration, readTimeout time.Duration) {
 		osdpResponse, err := osdpMessenger.SendAndReceive(outgoingMessage, writeTimeout, readTimeout)
 		if err != nil {
-			log.Error("Unable to Send and Receive: ", err)
+			errorHandler(err)
 			return
 		}
 		osdpHandler(osdpResponse)
