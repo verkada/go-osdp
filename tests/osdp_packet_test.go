@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"../osdp"
 	"github.com/stretchr/testify/require"
+	osdp "github.com/verkada/go-osdp"
 )
 
 func TestPacketCreationACK(t *testing.T) {
