@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/verkada/go-osdp/osdp"
+	"../osdp"
 )
 
 var osdpMessenger *osdp.OSDPMessenger
