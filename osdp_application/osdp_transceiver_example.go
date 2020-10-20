@@ -1,4 +1,4 @@
-package example
+package osdp_application
 
 import "fmt"
 

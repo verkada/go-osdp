@@ -27,12 +27,10 @@ type osdpResponseResult struct {
 }
 
 func NewOSDPMessenger(transceiver OSDPTransceiver) *OSDPMessenger {
-
 	return &OSDPMessenger{connected: false, transceiver: transceiver}
 }
 
-func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage) error {
-
+func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage, timeout time.Duration) error {
 	osdpPacket, err := NewPacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, true)
 	if err != nil {
 		return err
@@ -41,7 +39,6 @@ func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage) er
 }
 
 func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSDPMessage, error) {
-
 	receiveChannel := make(chan osdpResponseResult, 1)
 	go func() {
 		responseData, err := osdpMessenger.transceiver.Receive() // TODO handle max length correctly
@@ -58,20 +55,21 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 		if err != nil {
 			return nil, err
 		}
-		return &OSDPMessage{MessageCode: OSDPCode(osdpPacket.msgCode),
-			PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData}, nil
+		return &OSDPMessage{
+			MessageCode:       OSDPCode(osdpPacket.msgCode),
+			PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
+		}, nil
 	case <-time.After(timeout * time.Millisecond):
 		return nil, errors.New("OSDPReceiveTimeout")
 	}
-
 }
 
-func (osdpMessenger *OSDPMessenger) SendAndReceive(osdpMessage *OSDPMessage, timeout time.Duration) (*OSDPMessage, error) {
-	err := osdpMessenger.SendOSDPCommand(osdpMessage)
+func (osdpMessenger *OSDPMessenger) SendAndReceive(osdpMessage *OSDPMessage, writeTimeout time.Duration, readTimeout time.Duration) (*OSDPMessage, error) {
+	err := osdpMessenger.SendOSDPCommand(osdpMessage, writeTimeout)
 	if err != nil {
 		return nil, err
 	}
-	osdpPacket, err := osdpMessenger.ReceiveResponse(timeout)
+	osdpPacket, err := osdpMessenger.ReceiveResponse(readTimeout)
 	if err != nil {
 		return nil, err
 	}
