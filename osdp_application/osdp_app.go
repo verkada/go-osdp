@@ -12,7 +12,6 @@ var osdpMessenger *osdp.OSDPMessenger
 const (
 	osdpMessageFrequencyMS time.Duration = 200
 	osdpMessageTimeout     time.Duration = 200
-	peripheralAddress      byte          = 0x00
 )
 
 type (
@@ -20,7 +19,7 @@ type (
 	ErrorHandler       func(err error)
 )
 
-func StartCommunication(ctx context.Context, transceiver osdp.OSDPTransceiver, osdpHandler OSDPMessageHandler, outgoingMessageChan chan *osdp.OSDPMessage, errorHandler ErrorHandler) {
+func StartCommunication(ctx context.Context, transceiver osdp.OSDPTransceiver, osdpHandler OSDPMessageHandler, outgoingMessageChan chan *osdp.OSDPMessage, errorHandler ErrorHandler, peripheralAddress byte) {
 	ticker := time.NewTicker(osdpMessageFrequencyMS * time.Millisecond)
 
 	osdpMessenger = osdp.NewOSDPMessenger(transceiver)
