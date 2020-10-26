@@ -2,7 +2,6 @@ package osdp
 
 import (
 	"encoding/binary"
-	"errors"
 
 	"github.com/sigurn/crc16"
 )
@@ -37,7 +36,7 @@ const (
 func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integrityCheck bool) (*OSDPPacket, error) {
 	// TODO: check that arguments meet OSDP spec, assert msgData is the right size
 	if peripheralAddress < minPeripheralAddress || peripheralAddress > maxPeripheralAddress {
-		return nil, errors.New("Peripheral Address out of range")
+		return nil, AddressOutOfRangeError
 	}
 
 	// TODO: Support sequence number
@@ -108,7 +107,7 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 
 	currentIndex++
 	// Check that the peripheral Address is in range
-	peripheralAddress := payload[currentIndex]
+	peripheralAddress := payload[currentIndex] & maxPeripheralAddress
 	if peripheralAddress < minPeripheralAddress || peripheralAddress > maxPeripheralAddress {
 		return nil, AddressOutOfRangeError
 	}
