@@ -35,7 +35,7 @@ const (
 
 func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integrityCheck bool) (*OSDPPacket, error) {
 	// TODO: check that arguments meet OSDP spec, assert msgData is the right size
-	if peripheralAddress < minPeripheralAddress || peripheralAddress > maxPeripheralAddress {
+	if (peripheralAddress&maxPeripheralAddress) < minPeripheralAddress || (peripheralAddress&maxPeripheralAddress) > maxPeripheralAddress {
 		return nil, AddressOutOfRangeError
 	}
 
@@ -107,8 +107,8 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 
 	currentIndex++
 	// Check that the peripheral Address is in range
-	peripheralAddress := payload[currentIndex] & maxPeripheralAddress
-	if peripheralAddress < minPeripheralAddress || peripheralAddress > maxPeripheralAddress {
+	peripheralAddress := payload[currentIndex]
+	if (peripheralAddress&maxPeripheralAddress) < minPeripheralAddress || (peripheralAddress&maxPeripheralAddress) > maxPeripheralAddress {
 		return nil, AddressOutOfRangeError
 	}
 
