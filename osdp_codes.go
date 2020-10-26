@@ -48,3 +48,7 @@ const (
 	REPLY_BUSY      OSDPCode = 0x79
 	REPLY_XRD       OSDPCode = 0xB1
 )
+
+const (
+	WIEGAND_FORMAT_CODE OSDPCode = 0x01
+)
