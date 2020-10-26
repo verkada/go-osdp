@@ -1,7 +1,6 @@
 package osdp
 
 import (
-	"context"
 	"time"
 )
 
@@ -34,39 +33,44 @@ func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage, ti
 }
 
 func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSDPMessage, error) {
-	readDoneContext, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	payload := []byte{}
-	for {
-		select {
-		default:
-			responseData, err := osdpMessenger.transceiver.Receive() // TODO handle max length correctly
+	type osdpReceiveMessage struct {
+		message *OSDPMessage
+		err     error
+	}
+	osdpReceiveChan := make(chan osdpReceiveMessage, 1)
+	go func() {
+		payload := []byte{}
+		for {
+			// TODO Fix the fact that this doesnt actually timeout
+			responseData, err := osdpMessenger.transceiver.Receive()
 			if err != nil {
-				return nil, err
+				osdpReceiveChan <- osdpReceiveMessage{message: nil, err: err}
 			}
 			payload = append(payload, responseData...)
 			osdpPacket, err := NewPacketFromBytes(payload)
 			if err == nil {
-				return &OSDPMessage{
+				osdpReceiveChan <- osdpReceiveMessage{message: &OSDPMessage{
 					MessageCode:       OSDPCode(osdpPacket.msgCode),
 					PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
-				}, nil
+				}, err: nil}
 			}
 			// Keep Receiving until we get a valid packet, timeout or error
 			if err != PacketIncompleteError {
-				return nil, err
+				osdpReceiveChan <- osdpReceiveMessage{message: nil, err: err}
 			}
-
-		case <-readDoneContext.Done():
-			osdpPacket, err := NewPacketFromBytes(payload)
-			if err == nil {
-				return &OSDPMessage{
-					MessageCode:       OSDPCode(osdpPacket.msgCode),
-					PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
-				}, nil
-			}
-			return nil, OSDPReceiveTimeoutError
 		}
+	}()
+
+	select {
+	case msg := <-osdpReceiveChan:
+		return msg.message, msg.err
+
+	case <-time.After(timeout):
+		err := osdpMessenger.transceiver.Reset()
+		if err != nil {
+			return nil, err
+		}
+		return nil, OSDPReceiveTimeoutError
 	}
 }
 

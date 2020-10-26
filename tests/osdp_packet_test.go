@@ -106,8 +106,14 @@ func TestMessageReceive(t *testing.T) {
 }
 
 func TestMessageReceiveTimeout(t *testing.T) {
-	transceiver := &MockTransceiver{timesCalled: 0}
+	transceiver := &SlowTransceiver{}
 	messenger := osdp.NewOSDPMessenger(transceiver)
-	_, err := messenger.ReceiveResponse(0 * time.Second)
+	_, err := messenger.ReceiveResponse(200 * time.Millisecond)
 	require.Equal(t, osdp.OSDPReceiveTimeoutError, err)
+	correctMessage := &osdp.OSDPMessage{MessageCode: 0x40, PeripheralAddress: 0x00, MessageData: []byte{}}
+	message, err := messenger.ReceiveResponse(400 * time.Millisecond)
+	if err != nil {
+		t.Errorf("Error while Receiving Message response: %v", err.Error())
+	}
+	require.Equal(t, correctMessage, message)
 }
