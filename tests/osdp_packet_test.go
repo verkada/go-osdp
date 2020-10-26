@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	osdp "github.com/verkada/go-osdp"
@@ -61,12 +62,12 @@ func TestPacketDecodeACK(t *testing.T) {
 	msgToDecode := []byte{0x53, 0x00, 0x08, 0x00, 0x04, 0x40, 0x89, 0x8E}
 	decodedPacket, err := osdp.NewPacketFromBytes(msgToDecode)
 	if err != nil {
-		t.Errorf("Unable to Decode OSDP Packet")
+		t.Errorf("Unable to Decode OSDP Packet: %v", err.Error())
 	}
 
 	correctPacket, err := osdp.NewPacket(osdp.REPLY_ACK, 0x00, []byte{}, true)
 	if err != nil {
-		t.Errorf("Unable to Create OSDP Packet")
+		t.Errorf("Unable to Create OSDP Packet: %v", err.Error())
 	}
 
 	require.Equal(t, correctPacket, decodedPacket)
@@ -81,13 +82,32 @@ func TestPacketDecodeCardScan(t *testing.T) {
 	}
 	decodedPacket, err := osdp.NewPacketFromBytes(msgToDecode)
 	if err != nil {
-		t.Errorf("Unable to Decode OSDP Packet")
+		t.Errorf("Unable to Decode OSDP Packet: %v", err.Error())
 	}
 	card := []byte("00000000010011100011010101")
 	correctPacket, err := osdp.NewPacket(osdp.REPLY_RAW, 0x00, card, true)
 	if err != nil {
-		t.Errorf("Unable to Create OSDP Packet")
+		t.Errorf("Unable to Create OSDP Packet: %v", err)
 	}
 
 	require.Equal(t, correctPacket, decodedPacket)
+}
+
+func TestMessageReceive(t *testing.T) {
+	transceiver := &MockTransceiver{timesCalled: 0}
+	messenger := osdp.NewOSDPMessenger(transceiver)
+
+	correctMessage := &osdp.OSDPMessage{MessageCode: 0x40, PeripheralAddress: 0x00, MessageData: []byte{}}
+	message, err := messenger.ReceiveResponse(1 * time.Second)
+	if err != nil {
+		t.Errorf("Error while Receiving Message response: %v", err.Error())
+	}
+	require.Equal(t, correctMessage, message)
+}
+
+func TestMessageReceiveTimeout(t *testing.T) {
+	transceiver := &MockTransceiver{timesCalled: 0}
+	messenger := osdp.NewOSDPMessenger(transceiver)
+	_, err := messenger.ReceiveResponse(0 * time.Second)
+	require.Equal(t, osdp.OSDPReceiveTimeoutError, err)
 }
