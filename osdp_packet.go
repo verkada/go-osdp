@@ -18,7 +18,7 @@ type OSDPPacket struct {
 	securityBlockData     []byte // TODO Support
 	msgCode               byte   // OSDP Command or Reply
 	msgData               []byte
-	msgAuthenticationCode []byte //Max len 4 // TODO support
+	msgAuthenticationCode []byte // Max len 4 // TODO support
 	lsbChecksum           byte
 	msbChecksum           byte
 	secure                bool
@@ -35,7 +35,7 @@ const (
 )
 
 func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integrityCheck bool) (*OSDPPacket, error) {
-	//TODO: check that arguments meet OSDP spec, assert msgData is the right size
+	// TODO: check that arguments meet OSDP spec, assert msgData is the right size
 	if peripheralAddress < minPeripheralAddress || peripheralAddress > maxPeripheralAddress {
 		return nil, errors.New("Peripheral Address out of range")
 	}
@@ -51,11 +51,13 @@ func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integri
 	var messageLengthUint uint16 = minimumPacketLengthUnsecure + uint16(len(securityBlockData)+len(msgAuthenticationCode)+len(msgData))
 	messageLength := make([]byte, 2)
 	binary.LittleEndian.PutUint16(messageLength, messageLengthUint)
-	osdpPacket := &OSDPPacket{startOfMessage: OSDPSOM,
+	osdpPacket := &OSDPPacket{
+		startOfMessage:    OSDPSOM,
 		peripheralAddress: peripheralAddress, lsbLength: messageLength[0], msbLength: messageLength[1],
 		msgCtrlInfo: msgControlInfo, securityBlockLength: 0x00, securityBlockType: 0x00, securityBlockData: nil,
 		msgCode: byte(msgCode), msgData: msgData, msgAuthenticationCode: nil,
-		lsbChecksum: 0x00, msbChecksum: 0x00, secure: false, useMAC: false}
+		lsbChecksum: 0x00, msbChecksum: 0x00, secure: false, useMAC: false,
+	}
 
 	osdpPacketBytes := osdpPacket.ToBytes()
 	packetBytesSizeWithoutChecksum := len(osdpPacketBytes) - 2
@@ -69,8 +71,8 @@ func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integri
 }
 
 func (osdpPacket *OSDPPacket) ToBytes() []byte {
-
-	var packetBytes []byte = []byte{osdpPacket.startOfMessage, osdpPacket.peripheralAddress,
+	var packetBytes []byte = []byte{
+		osdpPacket.startOfMessage, osdpPacket.peripheralAddress,
 		osdpPacket.lsbLength, osdpPacket.msbLength, osdpPacket.msgCtrlInfo,
 	}
 	if osdpPacket.secure {
@@ -91,32 +93,33 @@ func (osdpPacket *OSDPPacket) ToBytes() []byte {
 }
 
 func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
-
 	// Check that payload meets minimum OSDP spec size
 	var payloadLength uint16 = uint16(len(payload))
 	if payloadLength < minimumPacketLengthUnsecure {
-		return nil, errors.New("Payload size less than minimum possible OSDP payload size")
+		return nil, PacketIncompleteError
 	}
 
 	currentIndex := 0
 	// Check that start of message follows OSDP spec
 	startOfMessage := OSDPSOM
 	if payload[currentIndex] != startOfMessage {
-		return nil, errors.New("Invalid OSDP SOM")
+		return nil, InvalidSOMError
 	}
 
 	currentIndex++
 	// Check that the peripheral Address is in range
 	peripheralAddress := payload[currentIndex]
 	if peripheralAddress < minPeripheralAddress || peripheralAddress > maxPeripheralAddress {
-		return nil, errors.New("Peripheral Address out of range")
+		return nil, AddressOutOfRangeError
 	}
 
 	// Parse the message length
 	currentIndex++
 	var messageLength uint16 = uint16(payload[currentIndex] | (payload[currentIndex+1] << 4))
 	bytesRemaining := messageLength - minimumPacketLengthUnsecure // TODO: Add more if secure
-
+	if len(payload) < int(messageLength) {
+		return nil, PacketIncompleteError
+	}
 	// Check the message control info. TODO: Check for secure, MAC etc
 	currentIndex += 2
 	msgControlInfo := payload[currentIndex]
@@ -131,7 +134,7 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	// Check the message code
 	msgCode := payload[currentIndex]
 	currentIndex++
-	//TODO: if MAC then subtract 4 from bytes remaining to get length of msgData
+	// TODO: if MAC then subtract 4 from bytes remaining to get length of msgData
 	msgData := payload[currentIndex : currentIndex+int(bytesRemaining)]
 
 	currentIndex += int(bytesRemaining)
@@ -146,7 +149,7 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	}
 
 	if lsbChecksum != osdpPacket.lsbChecksum || msbChecksum != osdpPacket.msbChecksum {
-		return nil, errors.New("Packet failed to pass checksum")
+		return nil, ChecksumFailedError
 	}
 
 	return osdpPacket, err

@@ -1,7 +1,7 @@
 package osdp
 
 import (
-	"errors"
+	"context"
 	"time"
 )
 
@@ -40,27 +40,45 @@ func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage, ti
 
 func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSDPMessage, error) {
 	receiveChannel := make(chan osdpResponseResult, 1)
-	go func() {
-		responseData, err := osdpMessenger.transceiver.Receive() // TODO handle max length correctly
-		responseResult := osdpResponseResult{responsePayload: responseData, responseErr: err}
-		receiveChannel <- responseResult
-	}()
+	readDoneContext, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				responseData, err := osdpMessenger.transceiver.Receive() // TODO handle max length correctly
+				responseResult := osdpResponseResult{responsePayload: responseData, responseErr: err}
+				receiveChannel <- responseResult
 
-	select {
-	case response := <-receiveChannel:
-		if response.responseErr != nil {
-			return nil, response.responseErr
+			}
 		}
-		osdpPacket, err := NewPacketFromBytes(response.responsePayload)
-		if err != nil {
-			return nil, err
+	}(readDoneContext)
+
+	payload := []byte{}
+	for {
+		select {
+		case response := <-receiveChannel:
+			if response.responseErr != nil {
+				return nil, response.responseErr
+			}
+			payload = append(payload, response.responsePayload...)
+			osdpPacket, err := NewPacketFromBytes(payload)
+			if err == nil {
+				return &OSDPMessage{
+					MessageCode:       OSDPCode(osdpPacket.msgCode),
+					PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
+				}, nil
+			}
+			// Keep Receiving until we get a valid packet, timeout or error
+			if err != PacketIncompleteError {
+				return nil, err
+			}
+
+		case <-readDoneContext.Done():
+			return nil, OSDPReceiveTimeoutError
 		}
-		return &OSDPMessage{
-			MessageCode:       OSDPCode(osdpPacket.msgCode),
-			PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
-		}, nil
-	case <-time.After(timeout * time.Millisecond):
-		return nil, errors.New("OSDPReceiveTimeout")
 	}
 }
 
