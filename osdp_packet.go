@@ -107,8 +107,8 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 
 	currentIndex++
 	// Check that the peripheral Address is in range
-	peripheralAddress := payload[currentIndex] & maxPeripheralAddress
-	if peripheralAddress < minPeripheralAddress || peripheralAddress > maxPeripheralAddress {
+	peripheralAddress := payload[currentIndex]
+	if (peripheralAddress&maxPeripheralAddress) < minPeripheralAddress || (peripheralAddress&maxPeripheralAddress) > maxPeripheralAddress {
 		return nil, AddressOutOfRangeError
 	}
 
