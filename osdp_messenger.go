@@ -21,11 +21,6 @@ type OSDPMessenger struct {
 	transceiver OSDPTransceiver
 }
 
-type osdpResponseResult struct {
-	responsePayload []byte
-	responseErr     error
-}
-
 func NewOSDPMessenger(transceiver OSDPTransceiver) *OSDPMessenger {
 	return &OSDPMessenger{connected: false, transceiver: transceiver}
 }
@@ -39,31 +34,17 @@ func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage, ti
 }
 
 func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSDPMessage, error) {
-	receiveChannel := make(chan osdpResponseResult, 1)
 	readDoneContext, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				responseData, err := osdpMessenger.transceiver.Receive() // TODO handle max length correctly
-				responseResult := osdpResponseResult{responsePayload: responseData, responseErr: err}
-				receiveChannel <- responseResult
-
-			}
-		}
-	}(readDoneContext)
-
 	payload := []byte{}
 	for {
 		select {
-		case response := <-receiveChannel:
-			if response.responseErr != nil {
-				return nil, response.responseErr
+		default:
+			responseData, err := osdpMessenger.transceiver.Receive() // TODO handle max length correctly
+			if err != nil {
+				return nil, err
 			}
-			payload = append(payload, response.responsePayload...)
+			payload = append(payload, responseData...)
 			osdpPacket, err := NewPacketFromBytes(payload)
 			if err == nil {
 				return &OSDPMessage{
@@ -77,6 +58,13 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 			}
 
 		case <-readDoneContext.Done():
+			osdpPacket, err := NewPacketFromBytes(payload)
+			if err == nil {
+				return &OSDPMessage{
+					MessageCode:       OSDPCode(osdpPacket.msgCode),
+					PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
+				}, nil
+			}
 			return nil, OSDPReceiveTimeoutError
 		}
 	}
@@ -87,9 +75,5 @@ func (osdpMessenger *OSDPMessenger) SendAndReceive(osdpMessage *OSDPMessage, wri
 	if err != nil {
 		return nil, err
 	}
-	osdpPacket, err := osdpMessenger.ReceiveResponse(readTimeout)
-	if err != nil {
-		return nil, err
-	}
-	return osdpPacket, nil
+	return osdpMessenger.ReceiveResponse(readTimeout)
 }
