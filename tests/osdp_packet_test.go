@@ -97,7 +97,7 @@ func TestMessageReceive(t *testing.T) {
 	transceiver := &MockTransceiver{timesCalled: 0}
 	messenger := osdp.NewOSDPMessenger(transceiver, false)
 
-	correctMessage := &osdp.OSDPMessage{MessageCode: 0x40, PeripheralAddress: 0x00, MessageData: []byte{}}
+	correctMessage := &osdp.OSDPMessage{MessageCode: 0x40, PeripheralAddress: 0x00, MessageData: []byte{}, SequenceNumber: 0x00}
 	message, err := messenger.ReceiveResponse(1 * time.Second)
 	if err != nil {
 		t.Errorf("Error while Receiving Message response: %v", err.Error())

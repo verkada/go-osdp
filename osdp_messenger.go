@@ -16,30 +16,17 @@ const (
 )
 
 type OSDPMessenger struct {
-	connected      bool
-	transceiver    OSDPTransceiver
-	sequenceNumber byte
+	connected   bool
+	transceiver OSDPTransceiver
 }
 
 func NewOSDPMessenger(transceiver OSDPTransceiver, secure bool) *OSDPMessenger {
-	return &OSDPMessenger{connected: false, transceiver: transceiver, sequenceNumber: 0x00}
-}
-
-func (osdpMessenger *OSDPMessenger) ResetSequence() {
-	osdpMessenger.sequenceNumber = 0x00
-}
-
-func (osdpMessenger *OSDPMessenger) IncrementSequence() {
-	if osdpMessenger.sequenceNumber == 0x03 {
-		osdpMessenger.sequenceNumber = 0x01
-		return
-	}
-	osdpMessenger.sequenceNumber = osdpMessenger.sequenceNumber + 0x01
+	return &OSDPMessenger{connected: false, transceiver: transceiver}
 }
 
 func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage, timeout time.Duration) error {
 	// TODO Implement write timeout
-	osdpPacket, err := NewPacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, osdpMessenger.sequenceNumber, true)
+	osdpPacket, err := NewPacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, osdpMessage.SequenceNumber, true)
 	if err != nil {
 		return err
 	}
@@ -63,9 +50,11 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 			payload = append(payload, responseData...)
 			osdpPacket, err := NewPacketFromBytes(payload)
 			if err == nil {
+				sequenceNumber := osdpPacket.msgCtrlInfo & 0x03
 				osdpReceiveChan <- osdpReceiveMessage{message: &OSDPMessage{
 					MessageCode:       OSDPCode(osdpPacket.msgCode),
 					PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
+					SequenceNumber: sequenceNumber,
 				}, err: nil}
 			}
 			// Keep Receiving until we get a valid packet, timeout or error
