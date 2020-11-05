@@ -16,16 +16,30 @@ const (
 )
 
 type OSDPMessenger struct {
-	connected   bool
-	transceiver OSDPTransceiver
+	connected      bool
+	transceiver    OSDPTransceiver
+	sequenceNumber byte
 }
 
-func NewOSDPMessenger(transceiver OSDPTransceiver) *OSDPMessenger {
-	return &OSDPMessenger{connected: false, transceiver: transceiver}
+func NewOSDPMessenger(transceiver OSDPTransceiver, secure bool) *OSDPMessenger {
+	return &OSDPMessenger{connected: false, transceiver: transceiver, sequenceNumber: 0x00}
+}
+
+func (osdpMessenger *OSDPMessenger) ResetSequence() {
+	osdpMessenger.sequenceNumber = 0x00
+}
+
+func (osdpMessenger *OSDPMessenger) IncrementSequence() {
+	if osdpMessenger.sequenceNumber == 0x03 {
+		osdpMessenger.sequenceNumber = 0x01
+		return
+	}
+	osdpMessenger.sequenceNumber = osdpMessenger.sequenceNumber + 0x01
 }
 
 func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage, timeout time.Duration) error {
-	osdpPacket, err := NewPacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, true)
+	// TODO Implement write timeout
+	osdpPacket, err := NewPacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, osdpMessenger.sequenceNumber, true)
 	if err != nil {
 		return err
 	}

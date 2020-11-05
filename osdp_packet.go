@@ -31,12 +31,65 @@ const (
 	msgControlChecksumMask      byte   = 0x04
 	msgControlSecureMask        byte   = 0x08
 	minimumPacketLengthUnsecure uint16 = 8
+	maxSecureBlockLength        int    = 0xFE
 )
 
-func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integrityCheck bool) (*OSDPPacket, error) {
+func NewSecurePacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, secureBlockType byte, secureBlockData []byte, sequenceNumber byte, integrityCheck bool) (*OSDPPacket, error) {
+	if (peripheralAddress&maxPeripheralAddress) < minPeripheralAddress || (peripheralAddress&maxPeripheralAddress) > maxPeripheralAddress {
+		return nil, AddressOutOfRangeError
+	}
+
+	if sequenceNumber > 0x03 {
+		return nil, InvalidSequenceNumber
+	}
+
+	var msgControlInfo byte = 0
+	if integrityCheck == true {
+		msgControlInfo |= msgControlChecksumMask
+	}
+
+	msgControlInfo |= msgControlSecureMask
+
+	msgControlInfo |= sequenceNumber
+
+	if len(secureBlockData) > maxSecureBlockLength {
+		return nil, SecureBlockDataLengthError
+	}
+	secureBlockLength := make([]byte, 1)
+	secureBlockPayloadLen := int8(len(secureBlockData))
+	secureBlockLength[0] = 0x02 + byte(secureBlockPayloadLen)
+
+	var msgAuthenticationCode []byte = []byte{} // TODO Implement
+	var messageLengthUint uint16 = minimumPacketLengthUnsecure + uint16(int(secureBlockLength[0])+len(msgAuthenticationCode)+len(msgData))
+	messageLength := make([]byte, 2)
+	binary.LittleEndian.PutUint16(messageLength, messageLengthUint)
+	osdpPacket := &OSDPPacket{
+		startOfMessage:    OSDPSOM,
+		peripheralAddress: peripheralAddress, lsbLength: messageLength[0], msbLength: messageLength[1],
+		msgCtrlInfo: msgControlInfo, securityBlockLength: secureBlockLength[0], securityBlockType: secureBlockType, securityBlockData: secureBlockData,
+		msgCode: byte(msgCode), msgData: msgData, msgAuthenticationCode: nil,
+		lsbChecksum: 0x00, msbChecksum: 0x00, secure: true, useMAC: true,
+	}
+
+	osdpPacketBytes := osdpPacket.ToBytes()
+	packetBytesSizeWithoutChecksum := len(osdpPacketBytes) - 2
+	crc16Table := crc16.MakeTable(crc16.CRC16_AUG_CCITT)
+	checksumUint := crc16.Checksum(osdpPacketBytes[:packetBytesSizeWithoutChecksum], crc16Table)
+	checksum := make([]byte, 2)
+	binary.LittleEndian.PutUint16(checksum, checksumUint)
+	osdpPacket.lsbChecksum = checksum[0]
+	osdpPacket.msbChecksum = checksum[1]
+	return osdpPacket, nil
+}
+
+func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, sequenceNumber byte, integrityCheck bool) (*OSDPPacket, error) {
 	// TODO: check that arguments meet OSDP spec, assert msgData is the right size
 	if (peripheralAddress&maxPeripheralAddress) < minPeripheralAddress || (peripheralAddress&maxPeripheralAddress) > maxPeripheralAddress {
 		return nil, AddressOutOfRangeError
+	}
+
+	if sequenceNumber > 0x03 {
+		return nil, InvalidSequenceNumber
 	}
 
 	// TODO: Support sequence number
@@ -44,6 +97,8 @@ func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, integri
 	if integrityCheck == true {
 		msgControlInfo |= msgControlChecksumMask
 	}
+
+	msgControlInfo |= sequenceNumber
 
 	var msgAuthenticationCode []byte = []byte{}
 	var securityBlockData []byte = []byte{}
@@ -126,6 +181,7 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	if (msgControlInfo & msgControlChecksumMask) == msgControlChecksumMask {
 		integrityCheck = true
 	}
+	sequenceNumber := msgControlInfo & 0x03
 
 	// TODO check the security block length if secure
 
@@ -142,7 +198,7 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	currentIndex++
 	msbChecksum := payload[currentIndex]
 
-	osdpPacket, err := NewPacket(OSDPCode(msgCode), peripheralAddress, msgData, integrityCheck)
+	osdpPacket, err := NewPacket(OSDPCode(msgCode), peripheralAddress, msgData, sequenceNumber, integrityCheck)
 	if err != nil {
 		return nil, err
 	}

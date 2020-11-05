@@ -7,6 +7,5 @@ type OSDPMessage struct {
 }
 
 func NewOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, msgData []byte) *OSDPMessage {
-
 	return &OSDPMessage{MessageCode: osdpCode, PeripheralAddress: peripheralAddress, MessageData: msgData}
 }

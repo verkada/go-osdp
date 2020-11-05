@@ -9,7 +9,7 @@ import (
 )
 
 func TestPacketCreationACK(t *testing.T) {
-	osdpPacket, err := osdp.NewPacket(osdp.REPLY_ACK, 0x00, []byte{}, true)
+	osdpPacket, err := osdp.NewPacket(osdp.REPLY_ACK, 0x00, []byte{}, 0x00, true)
 	if err != nil {
 		t.Errorf("Unable to Create OSDP Packet")
 	}
@@ -20,7 +20,7 @@ func TestPacketCreationACK(t *testing.T) {
 }
 
 func TestPacketCreationNAK(t *testing.T) {
-	osdpPacket, err := osdp.NewPacket(osdp.REPLY_NAK, 0x00, []byte{0x01}, true)
+	osdpPacket, err := osdp.NewPacket(osdp.REPLY_NAK, 0x00, []byte{0x01}, 0x00, true)
 	if err != nil {
 		t.Errorf("Unable to Create OSDP Packet")
 	}
@@ -31,7 +31,7 @@ func TestPacketCreationNAK(t *testing.T) {
 }
 
 func TestPacketCreationPOLL(t *testing.T) {
-	osdpPacket, err := osdp.NewPacket(osdp.CMD_POLL, 0x65, []byte{}, true)
+	osdpPacket, err := osdp.NewPacket(osdp.CMD_POLL, 0x65, []byte{}, 0x00, true)
 	if err != nil {
 		t.Errorf("Unable to Create OSDP Packet")
 	}
@@ -43,7 +43,7 @@ func TestPacketCreationPOLL(t *testing.T) {
 
 func TestPacketCreationCardScan(t *testing.T) {
 	card := []byte("00000000010011100011010101")
-	osdpPacket, err := osdp.NewPacket(osdp.REPLY_RAW, 0x00, card, true)
+	osdpPacket, err := osdp.NewPacket(osdp.REPLY_RAW, 0x00, card, 0x00, true)
 	if err != nil {
 		t.Errorf("Unable to Create OSDP Packet")
 	}
@@ -65,7 +65,7 @@ func TestPacketDecodeACK(t *testing.T) {
 		t.Errorf("Unable to Decode OSDP Packet: %v", err.Error())
 	}
 
-	correctPacket, err := osdp.NewPacket(osdp.REPLY_ACK, 0x00, []byte{}, true)
+	correctPacket, err := osdp.NewPacket(osdp.REPLY_ACK, 0x00, []byte{}, 0x00, true)
 	if err != nil {
 		t.Errorf("Unable to Create OSDP Packet: %v", err.Error())
 	}
@@ -85,7 +85,7 @@ func TestPacketDecodeCardScan(t *testing.T) {
 		t.Errorf("Unable to Decode OSDP Packet: %v", err.Error())
 	}
 	card := []byte("00000000010011100011010101")
-	correctPacket, err := osdp.NewPacket(osdp.REPLY_RAW, 0x00, card, true)
+	correctPacket, err := osdp.NewPacket(osdp.REPLY_RAW, 0x00, card, 0x00, true)
 	if err != nil {
 		t.Errorf("Unable to Create OSDP Packet: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestPacketDecodeCardScan(t *testing.T) {
 
 func TestMessageReceive(t *testing.T) {
 	transceiver := &MockTransceiver{timesCalled: 0}
-	messenger := osdp.NewOSDPMessenger(transceiver)
+	messenger := osdp.NewOSDPMessenger(transceiver, false)
 
 	correctMessage := &osdp.OSDPMessage{MessageCode: 0x40, PeripheralAddress: 0x00, MessageData: []byte{}}
 	message, err := messenger.ReceiveResponse(1 * time.Second)
@@ -107,7 +107,7 @@ func TestMessageReceive(t *testing.T) {
 
 func TestMessageReceiveTimeout(t *testing.T) {
 	transceiver := &SlowTransceiver{}
-	messenger := osdp.NewOSDPMessenger(transceiver)
+	messenger := osdp.NewOSDPMessenger(transceiver, false)
 	_, err := messenger.ReceiveResponse(200 * time.Millisecond)
 	require.Equal(t, osdp.OSDPReceiveTimeoutError, err)
 	correctMessage := &osdp.OSDPMessage{MessageCode: 0x40, PeripheralAddress: 0x00, MessageData: []byte{}}
