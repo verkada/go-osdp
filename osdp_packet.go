@@ -233,3 +233,8 @@ func (osdpPacket *OSDPPacket) GetSecurityBlockType() byte {
 func (osdpPacket *OSDPPacket) GetSecurityBlockData() []byte {
 	return osdpPacket.securityBlockData
 }
+
+func (osdpPacket *OSDPPacket) GetSequenceNumber() byte {
+	sequenceNumber := osdpPacket.msgCtrlInfo & 0x03
+	return sequenceNumber
+}
