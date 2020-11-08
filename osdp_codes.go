@@ -61,4 +61,5 @@ const (
 	SCS_15 = 0x15
 	SCS_16 = 0x16
 	SCS_17 = 0x17
+	SCS_18 = 0x18
 )

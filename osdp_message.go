@@ -5,8 +5,24 @@ type OSDPMessage struct {
 	PeripheralAddress byte
 	MessageData       []byte
 	SequenceNumber    byte
+	secure            bool
+	secureBlockType   byte
+	SCS_Data          []byte
 }
 
-func NewOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, sequenceNumber byte, msgData []byte) *OSDPMessage {
-	return &OSDPMessage{MessageCode: osdpCode, PeripheralAddress: peripheralAddress, MessageData: msgData, SequenceNumber: sequenceNumber}
+func NewOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, sequenceNumber byte, msgData []byte) (*OSDPMessage, error) {
+	if sequenceNumber < 0x00 || sequenceNumber > 0x03 {
+		return nil, InvalidSequenceNumber
+	}
+	return &OSDPMessage{MessageCode: osdpCode, PeripheralAddress: peripheralAddress, MessageData: msgData, SequenceNumber: sequenceNumber, secure: false}, nil
+}
+
+func NewSecureOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, sequenceNumber byte, secureBlockType byte, SCS_Data []byte, msgData []byte) (*OSDPMessage, error) {
+	if sequenceNumber < 0x00 || sequenceNumber > 0x03 {
+		return nil, InvalidSequenceNumber
+	}
+	if secureBlockType < SCS_11 || secureBlockType > SCS_18 {
+		return nil, InvalidSecureBlockType
+	}
+	return &OSDPMessage{MessageCode: osdpCode, PeripheralAddress: peripheralAddress, MessageData: msgData, SequenceNumber: sequenceNumber, secure: true, secureBlockType: secureBlockType, SCS_Data: SCS_Data}, nil
 }

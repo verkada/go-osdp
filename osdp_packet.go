@@ -209,3 +209,27 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 
 	return osdpPacket, err
 }
+
+func (osdpPacket *OSDPPacket) GetPeripheralAddress() byte {
+	return osdpPacket.peripheralAddress
+}
+
+func (osdpPacket *OSDPPacket) GetMessageCode() byte {
+	return osdpPacket.msgCode
+}
+
+func (osdpPacket *OSDPPacket) GetMessageData() []byte {
+	return osdpPacket.msgData
+}
+
+func (osdpPacket *OSDPPacket) IsSecure() bool {
+	return osdpPacket.secure
+}
+
+func (osdpPacket *OSDPPacket) GetSecurityBlockType() byte {
+	return osdpPacket.securityBlockType
+}
+
+func (osdpPacket *OSDPPacket) GetSecurityBlockData() []byte {
+	return osdpPacket.securityBlockData
+}
