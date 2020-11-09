@@ -8,7 +8,7 @@ import (
 	osdp "github.com/verkada/go-osdp"
 )
 
-func TestPacketCrreationFromBytes(t *testing.T) {
+func TestPacketCreationFromBytes(t *testing.T) {
 	payload := []byte{0x53, 0x00, 0x08, 0x00, 0x04, 0x40, 0x89, 0x8E}
 	osdpPacket, err := osdp.NewPacketFromBytes(payload)
 	if err != nil {
@@ -18,6 +18,16 @@ func TestPacketCrreationFromBytes(t *testing.T) {
 	}
 	secure := osdpPacket.IsSecure()
 	require.Equal(t, false, secure)
+
+	payload = []byte{0x53, 0x3D, 0x0A, 0x00, 0x0C, 0x02, 0x15, 0x60, 0xDF, 0x66}
+	osdpPacket, err = osdp.NewPacketFromBytes(payload)
+	if err != nil {
+		t.Log(err)
+		t.Errorf("Unable to Create Packet From Bytes")
+		return
+	}
+	secure = osdpPacket.IsSecure()
+	require.Equal(t, true, secure)
 }
 
 func TestSecurePacketCreationFromBytes(t *testing.T) {

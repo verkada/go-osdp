@@ -195,8 +195,10 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 		currentIndex += 1
 		secureBlockType = payload[currentIndex]
 		secureBlockLength -= 0x02
-		currentIndex += 1
-		secureBlockData = payload[currentIndex : currentIndex+int(secureBlockLength)]
+		if secureBlockLength > 0x00 {
+			currentIndex += 1
+			secureBlockData = payload[currentIndex : currentIndex+int(secureBlockLength)]
+		}
 	}
 
 	currentIndex++
