@@ -170,11 +170,11 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	// Parse the message length
 	currentIndex++
 	var messageLength uint16 = uint16(payload[currentIndex] | (payload[currentIndex+1] << 4))
-	bytesRemaining := messageLength - minimumPacketLengthUnsecure // TODO: Add more if secure
+	bytesRemaining := messageLength - minimumPacketLengthUnsecure
 	if len(payload) < int(messageLength) {
 		return nil, PacketIncompleteError
 	}
-	// Check the message control info. TODO: Check for secure, MAC etc
+	// Check the message control info. TODO: Check for MAC
 	currentIndex += 2
 	msgControlInfo := payload[currentIndex]
 	integrityCheck := false
@@ -183,7 +183,21 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	}
 	sequenceNumber := msgControlInfo & 0x03
 
+	secure := (msgControlInfo & msgControlSecureMask) == msgControlSecureMask
+	secureBlockType := byte(0x00)
+	secureBlockLength := byte(0x00)
+	secureBlockData := []byte{}
 	// TODO check the security block length if secure
+	if secure {
+		currentIndex += 1
+		secureBlockLength = payload[currentIndex]
+		bytesRemaining -= uint16(secureBlockLength)
+		currentIndex += 1
+		secureBlockType = payload[currentIndex]
+		secureBlockLength -= 0x02
+		currentIndex += 1
+		secureBlockData = payload[currentIndex : currentIndex+int(secureBlockLength)]
+	}
 
 	currentIndex++
 	// Check the message code
@@ -198,7 +212,19 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	currentIndex++
 	msbChecksum := payload[currentIndex]
 
-	osdpPacket, err := NewPacket(OSDPCode(msgCode), peripheralAddress, msgData, sequenceNumber, integrityCheck)
+	if secure == false {
+		osdpPacket, err := NewPacket(OSDPCode(msgCode), peripheralAddress, msgData, sequenceNumber, integrityCheck)
+		if err != nil {
+			return nil, err
+		}
+
+		if lsbChecksum != osdpPacket.lsbChecksum || msbChecksum != osdpPacket.msbChecksum {
+			return nil, ChecksumFailedError
+		}
+		return osdpPacket, err
+	}
+	// TODO: Use MAC
+	osdpPacket, err := NewSecurePacket(OSDPCode(msgCode), peripheralAddress, msgData, secureBlockType, secureBlockData, sequenceNumber, integrityCheck)
 	if err != nil {
 		return nil, err
 	}
