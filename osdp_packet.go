@@ -147,15 +147,23 @@ func (osdpPacket *OSDPPacket) ToBytes() []byte {
 }
 
 func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
+
+	// Check that start of message follows OSDP spec
+	currentIndex := 0
+	startOfMessage := OSDPSOM
+	for i := range payload {
+		if payload[i] == startOfMessage {
+			payload = payload[i:]
+			break
+		}
+	}
+
 	// Check that payload meets minimum OSDP spec size
 	var payloadLength uint16 = uint16(len(payload))
 	if payloadLength < minimumPacketLengthUnsecure {
 		return nil, PacketIncompleteError
 	}
 
-	currentIndex := 0
-	// Check that start of message follows OSDP spec
-	startOfMessage := OSDPSOM
 	if payload[currentIndex] != startOfMessage {
 		return nil, InvalidSOMError
 	}

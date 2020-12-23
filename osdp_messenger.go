@@ -50,11 +50,11 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 	go func() {
 		payload := []byte{}
 		for {
-			// TODO Fix the fact that this doesnt actually timeout
 			responseData, err := osdpMessenger.transceiver.Receive()
 			if err != nil {
 				osdpReceiveChan <- osdpReceiveMessage{message: nil, err: err}
 			}
+
 			payload = append(payload, responseData...)
 			osdpPacket, err := NewPacketFromBytes(payload)
 			if err == nil {
@@ -64,9 +64,10 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 					PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
 					SequenceNumber: sequenceNumber,
 				}, err: nil}
+				break
 			}
 			// Keep Receiving until we get a valid packet, timeout or error
-			if err != PacketIncompleteError {
+			if err != PacketIncompleteError && err != InvalidSOMError {
 				osdpReceiveChan <- osdpReceiveMessage{message: nil, err: err}
 			}
 		}
