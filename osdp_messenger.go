@@ -42,47 +42,32 @@ func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage, ti
 }
 
 func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSDPMessage, error) {
-	type osdpReceiveMessage struct {
-		message *OSDPMessage
-		err     error
-	}
-	osdpReceiveChan := make(chan osdpReceiveMessage, 1)
-	go func() {
-		payload := []byte{}
-		for {
-			responseData, err := osdpMessenger.transceiver.Receive()
-			if err != nil {
-				osdpReceiveChan <- osdpReceiveMessage{message: nil, err: err}
-			}
-
-			payload = append(payload, responseData...)
-			osdpPacket, err := NewPacketFromBytes(payload)
-			if err == nil {
-				sequenceNumber := osdpPacket.msgCtrlInfo & 0x03
-				osdpReceiveChan <- osdpReceiveMessage{message: &OSDPMessage{
-					MessageCode:       OSDPCode(osdpPacket.msgCode),
-					PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
-					SequenceNumber: sequenceNumber,
-				}, err: nil}
-				break
-			}
-			// Keep Receiving until we get a valid packet, timeout or error
-			if err != PacketIncompleteError && err != InvalidSOMError {
-				osdpReceiveChan <- osdpReceiveMessage{message: nil, err: err}
-			}
-		}
-	}()
-
-	select {
-	case msg := <-osdpReceiveChan:
-		return msg.message, msg.err
-
-	case <-time.After(timeout):
-		err := osdpMessenger.transceiver.Reset()
+	payload := []byte{}
+	timeStart := time.Now()
+	for {
+		responseData, err := osdpMessenger.transceiver.Receive()
 		if err != nil {
 			return nil, err
 		}
-		return nil, OSDPReceiveTimeoutError
+
+		payload = append(payload, responseData...)
+		osdpPacket, err := NewPacketFromBytes(payload)
+		if err == nil {
+			sequenceNumber := osdpPacket.msgCtrlInfo & 0x03
+			return &OSDPMessage{
+				MessageCode:       OSDPCode(osdpPacket.msgCode),
+				PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
+				SequenceNumber: sequenceNumber,
+			}, nil
+
+		}
+		// Keep Receiving until we get a valid packet, timeout or error
+		if err != PacketIncompleteError && err != InvalidSOMError {
+			return nil, err
+		}
+		if time.Since(timeStart) > timeout {
+			return nil, OSDPReceiveTimeoutError
+		}
 	}
 }
 
