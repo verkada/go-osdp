@@ -8,6 +8,7 @@ type OSDPMessage struct {
 	secure            bool
 	secureBlockType   byte
 	secureBlockData   []byte
+	Retries           uint32
 }
 
 func NewOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, sequenceNumber byte, msgData []byte) (*OSDPMessage, error) {
