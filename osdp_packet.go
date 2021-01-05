@@ -215,6 +215,9 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	// Check the message code
 	msgCode := payload[currentIndex]
 	currentIndex++
+	if len(payload) < (currentIndex + int(bytesRemaining)) {
+		return nil, PacketIncompleteError
+	}
 	// TODO: if MAC then subtract 4 from bytes remaining to get length of msgData
 	msgData := payload[currentIndex : currentIndex+int(bytesRemaining)]
 
