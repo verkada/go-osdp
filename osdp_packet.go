@@ -59,7 +59,12 @@ func NewSecurePacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, s
 	secureBlockPayloadLen := int8(len(secureBlockData))
 	secureBlockLength[0] = 0x02 + byte(secureBlockPayloadLen)
 
-	var msgAuthenticationCode []byte = []byte{} // TODO Implement
+	useMAC := false
+	var msgAuthenticationCode []byte
+	if secureBlockType > SCS_14 {
+		msgAuthenticationCode = []byte{0, 0, 0, 0}
+		useMAC = true
+	}
 	var messageLengthUint uint16 = minimumPacketLengthUnsecure + uint16(int(secureBlockLength[0])+len(msgAuthenticationCode)+len(msgData))
 	messageLength := make([]byte, 2)
 	binary.LittleEndian.PutUint16(messageLength, messageLengthUint)
@@ -67,8 +72,8 @@ func NewSecurePacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, s
 		startOfMessage:    OSDPSOM,
 		peripheralAddress: peripheralAddress, lsbLength: messageLength[0], msbLength: messageLength[1],
 		msgCtrlInfo: msgControlInfo, securityBlockLength: secureBlockLength[0], securityBlockType: secureBlockType, securityBlockData: secureBlockData,
-		msgCode: byte(msgCode), msgData: msgData, msgAuthenticationCode: nil,
-		lsbChecksum: 0x00, msbChecksum: 0x00, secure: true, useMAC: true,
+		msgCode: byte(msgCode), msgData: msgData, msgAuthenticationCode: msgAuthenticationCode,
+		lsbChecksum: 0x00, msbChecksum: 0x00, secure: true, useMAC: useMAC,
 	}
 
 	osdpPacketBytes := osdpPacket.ToBytes()
@@ -219,7 +224,17 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 		return nil, PacketIncompleteError
 	}
 	// TODO: if MAC then subtract 4 from bytes remaining to get length of msgData
+
 	msgData := payload[currentIndex : currentIndex+int(bytesRemaining)]
+	var MAC []byte
+	if secureBlockType > SCS_14 {
+		if len(msgData) < 4 {
+			// MAC should be present but it's not
+			return nil, PacketIncompleteError
+		}
+		MAC = msgData[len(msgData)-4:]
+		msgData = msgData[:len(msgData)-4]
+	}
 
 	currentIndex += int(bytesRemaining)
 
@@ -243,7 +258,7 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	osdpPacket.msgAuthenticationCode = MAC
 	if lsbChecksum != osdpPacket.lsbChecksum || msbChecksum != osdpPacket.msbChecksum {
 		return nil, ChecksumFailedError
 	}

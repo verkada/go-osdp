@@ -11,17 +11,18 @@ type OSDPMessage struct {
 	PeripheralAddress byte
 	MessageData       []byte
 	SequenceNumber    byte
-	secure            bool
-	secureBlockType   byte
-	secureBlockData   []byte
+	Secure            bool
+	SecureBlockType   byte
+	SecureBlockData   []byte
 	Retries           uint32
+	MAC               []byte
 }
 
 func NewOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, sequenceNumber byte, msgData []byte) (*OSDPMessage, error) {
 	if sequenceNumber < 0x00 || sequenceNumber > 0x03 {
 		return nil, InvalidSequenceNumber
 	}
-	return &OSDPMessage{MessageCode: osdpCode, PeripheralAddress: peripheralAddress, MessageData: msgData, SequenceNumber: sequenceNumber, secure: false}, nil
+	return &OSDPMessage{MessageCode: osdpCode, PeripheralAddress: peripheralAddress, MessageData: msgData, SequenceNumber: sequenceNumber, Secure: false}, nil
 }
 
 func NewSecureOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, sequenceNumber byte, secureBlockType byte, secureBlockData []byte, msgData []byte) (*OSDPMessage, error) {
@@ -31,18 +32,23 @@ func NewSecureOSDPMessage(osdpCode OSDPCode, peripheralAddress byte, sequenceNum
 	if secureBlockType < SCS_11 || secureBlockType > SCS_18 {
 		return nil, InvalidSecureBlockType
 	}
-	return &OSDPMessage{MessageCode: osdpCode, PeripheralAddress: peripheralAddress, MessageData: msgData, SequenceNumber: sequenceNumber, secure: true, secureBlockType: secureBlockType, secureBlockData: secureBlockData}, nil
+	return &OSDPMessage{MessageCode: osdpCode, PeripheralAddress: peripheralAddress, MessageData: msgData, SequenceNumber: sequenceNumber, Secure: true, SecureBlockType: secureBlockType, SecureBlockData: secureBlockData}, nil
 }
 
-func PacketFromMessage(osdpMessage *OSDPMessage) (*OSDPPacket, error) {
+func (osdpMessage *OSDPMessage) PacketFromMessage() (*OSDPPacket, error) {
 
-	if osdpMessage.secure {
-		osdpPacket, err := NewSecurePacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, osdpMessage.secureBlockType, osdpMessage.secureBlockData, osdpMessage.SequenceNumber, true)
+	if osdpMessage.Secure {
+		osdpPacket, err := NewSecurePacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, osdpMessage.SecureBlockType, osdpMessage.SecureBlockData, osdpMessage.SequenceNumber, true)
 		if err != nil {
 			return nil, err
 		}
+		if osdpMessage.MAC != nil {
+			osdpPacket.msgAuthenticationCode = make([]byte, 4)
+			copy(osdpPacket.msgAuthenticationCode, osdpMessage.MAC[:4])
+		}
 		return osdpPacket, nil
 	}
+
 	osdpPacket, err := NewPacket(osdpMessage.MessageCode, osdpMessage.PeripheralAddress, osdpMessage.MessageData, osdpMessage.SequenceNumber, true)
 	if err != nil {
 		return nil, err
@@ -50,13 +56,13 @@ func PacketFromMessage(osdpMessage *OSDPMessage) (*OSDPPacket, error) {
 	return osdpPacket, nil
 }
 
-func GenerateMAC(osdpMessage *OSDPMessage, IVC, SMAC1, SMAC2 []byte) ([]byte, error) {
+func (osdpMessage *OSDPMessage) GenerateMAC(IVC, SMAC1, SMAC2 []byte) ([]byte, error) {
 
-	if !osdpMessage.secure {
+	if !osdpMessage.Secure {
 		return nil, errors.New("Can only generate MAC for secure message")
 	}
 
-	osdpPacket, err := PacketFromMessage(osdpMessage)
+	osdpPacket, err := osdpMessage.PacketFromMessage()
 	if err != nil {
 		return nil, err
 	}
@@ -75,29 +81,42 @@ func GenerateMAC(osdpMessage *OSDPMessage, IVC, SMAC1, SMAC2 []byte) ([]byte, er
 	//TODO: Remove MAC, REMOVE CRC
 	MAC := make([]byte, 16)
 	osdpPacketBytes := osdpPacket.ToBytes()
+	osdpPacketBytes = osdpPacketBytes[0 : len(osdpPacketBytes)-2] // Remove the CRC
+	if osdpPacket.useMAC {
+		osdpPacketBytes = osdpPacketBytes[0 : len(osdpPacketBytes)-4]
+	}
 	packetLength := len(osdpPacketBytes)
-
+	// Apply Padding
+	paddingRequired := packetLength % 16
+	if paddingRequired == 0 {
+		paddingRequired = 16
+	}
+	osdpPacketBytes = append(osdpPacketBytes, 0x80)
+	restPadding := make([]byte, paddingRequired-1)
+	osdpPacketBytes = append(osdpPacketBytes, restPadding...)
+	packetLength = len(osdpPacketBytes)
 	if packetLength > 16 {
 		block, err := aes.NewCipher(SMAC1)
 		if err != nil {
 			return nil, err
 		}
-		mode := cipher.NewCBCEncrypter(block, IVC)
-		mode.CryptBlocks(MAC, osdpPacketBytes[0:packetLength-16])
-		osdpPacketBytes = osdpPacketBytes[packetLength-16:]
+		for packetLength > 16 {
+			mode := cipher.NewCBCEncrypter(block, IVC)
+			mode.CryptBlocks(MAC, osdpPacketBytes[0:16])
+			osdpPacketBytes = osdpPacketBytes[16:]
+			packetLength = len(osdpPacketBytes)
+			if copy(IVC, MAC) != 16 {
+				return nil, errors.New("Unable to copy MAC into IV")
+			}
+		}
+
 	}
-
-	// fmt.Println("Hello, playground")
-	// osdpPacket := []byte{0x53, 0x3d, 0x0e, 0x00, 0x0e, 0x02, 0x15, 0x60, 0x4b, 0x56, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00}
-	// IVC:= []byte{0x61, 0x6b, 0xb9, 0xf8, 0x1a, 0x0f, 0xfd, 0x62, 0x8d, 0x27, 0x45, 0x39, 0xb4, 0xd1, 0x0a, 0x86}
-	// key := []byte{ 0xb3 ,0x63 ,0xdf ,0x85 ,0x12 ,0x13 ,0xde ,0x3a  ,0x4b, 0x50, 0xd9, 0x02 ,0x9a ,0x97, 0x3a, 0xd7}
-	// block, err := aes.NewCipher(key)
-	// if err != nil {
-
-	// 	fmt.Println("Error New Cipher")
-	// }
-	// dst := make([]byte, 16)
-	// mode := cipher.NewCBCEncrypter(block, IVC)
-	// mode.CryptBlocks(dst, osdpPacket)
-	// fmt.Println("MAC:", hex.Dump(dst))
+	block, err := aes.NewCipher(SMAC2)
+	if err != nil {
+		return nil, err
+	}
+	mode := cipher.NewCBCEncrypter(block, MAC)
+	mode.CryptBlocks(MAC, osdpPacketBytes)
+	osdpMessage.MAC = MAC
+	return MAC, nil
 }

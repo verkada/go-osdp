@@ -26,10 +26,11 @@ func NewOSDPMessenger(transceiver OSDPTransceiver, secure bool) *OSDPMessenger {
 
 func (osdpMessenger *OSDPMessenger) SendOSDPCommand(osdpMessage *OSDPMessage, timeout time.Duration) error {
 	// TODO Implement write timeout
-	osdpPacket, err := PacketFromMessage(osdpMessage)
+	osdpPacket, err := osdpMessage.PacketFromMessage()
 	if err != nil {
 		return err
 	}
+
 	return osdpMessenger.transceiver.Transmit(osdpPacket.ToBytes())
 }
 
@@ -49,7 +50,10 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 			return &OSDPMessage{
 				MessageCode:       OSDPCode(osdpPacket.msgCode),
 				PeripheralAddress: osdpPacket.peripheralAddress, MessageData: osdpPacket.msgData,
-				SequenceNumber: sequenceNumber,
+				SequenceNumber:  sequenceNumber,
+				MAC:             osdpPacket.msgAuthenticationCode,
+				SecureBlockData: osdpPacket.securityBlockData,
+				SecureBlockType: osdpPacket.securityBlockType,
 			}, nil
 
 		}
