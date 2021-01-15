@@ -2,6 +2,7 @@ package osdp
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	"github.com/sigurn/crc16"
 )
@@ -249,6 +250,7 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 		}
 
 		if lsbChecksum != osdpPacket.lsbChecksum || msbChecksum != osdpPacket.msbChecksum {
+			fmt.Println("Checksum failed: ", osdpPacket.lsbChecksum, " != ", lsbChecksum, osdpPacket.msbChecksum, " != ", msbChecksum, " Payload: ", payload)
 			return nil, ChecksumFailedError
 		}
 		return osdpPacket, err
@@ -259,7 +261,9 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 		return nil, err
 	}
 	osdpPacket.msgAuthenticationCode = MAC
+	osdpPacket.recalculateChecksum()
 	if lsbChecksum != osdpPacket.lsbChecksum || msbChecksum != osdpPacket.msbChecksum {
+		fmt.Println("Secure Checksum failed: ", osdpPacket.lsbChecksum, " != ", lsbChecksum, osdpPacket.msbChecksum, " != ", msbChecksum, " Payload: ", payload, " Generated: ", osdpPacket.ToBytes())
 		return nil, ChecksumFailedError
 	}
 
@@ -293,4 +297,16 @@ func (osdpPacket *OSDPPacket) GetSecurityBlockData() []byte {
 func (osdpPacket *OSDPPacket) GetSequenceNumber() byte {
 	sequenceNumber := osdpPacket.msgCtrlInfo & 0x03
 	return sequenceNumber
+}
+
+func (osdpPacket *OSDPPacket) recalculateChecksum() {
+
+	osdpPacketBytes := osdpPacket.ToBytes()
+	packetBytesSizeWithoutChecksum := len(osdpPacketBytes) - 2
+	crc16Table := crc16.MakeTable(crc16.CRC16_AUG_CCITT)
+	checksumUint := crc16.Checksum(osdpPacketBytes[:packetBytesSizeWithoutChecksum], crc16Table)
+	checksum := make([]byte, 2)
+	binary.LittleEndian.PutUint16(checksum, checksumUint)
+	osdpPacket.lsbChecksum = checksum[0]
+	osdpPacket.msbChecksum = checksum[1]
 }

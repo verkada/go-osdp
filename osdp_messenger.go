@@ -54,6 +54,7 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 				MAC:             osdpPacket.msgAuthenticationCode,
 				SecureBlockData: osdpPacket.securityBlockData,
 				SecureBlockType: osdpPacket.securityBlockType,
+				Secure:          osdpPacket.secure,
 			}, nil
 
 		}

@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"errors"
+	"fmt"
 )
 
 type OSDPMessage struct {
@@ -87,9 +88,9 @@ func (osdpMessage *OSDPMessage) GenerateMAC(IVC, SMAC1, SMAC2 []byte) ([]byte, e
 	}
 	packetLength := len(osdpPacketBytes)
 	// Apply Padding
-	paddingRequired := packetLength % 16
-	if paddingRequired == 0 {
-		paddingRequired = 16
+	paddingRequired := 16 - (packetLength % 16)
+	if packetLength < 16 {
+		paddingRequired = 16 - packetLength
 	}
 	osdpPacketBytes = append(osdpPacketBytes, 0x80)
 	restPadding := make([]byte, paddingRequired-1)
@@ -115,7 +116,8 @@ func (osdpMessage *OSDPMessage) GenerateMAC(IVC, SMAC1, SMAC2 []byte) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	mode := cipher.NewCBCEncrypter(block, MAC)
+	fmt.Println(len(MAC), " ", len(IVC), " ", len(osdpPacketBytes))
+	mode := cipher.NewCBCEncrypter(block, IVC)
 	mode.CryptBlocks(MAC, osdpPacketBytes)
 	osdpMessage.MAC = MAC
 	return MAC, nil
