@@ -76,15 +76,7 @@ func NewSecurePacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, s
 		msgCode: byte(msgCode), msgData: msgData, msgAuthenticationCode: msgAuthenticationCode,
 		lsbChecksum: 0x00, msbChecksum: 0x00, secure: true, useMAC: useMAC,
 	}
-
-	osdpPacketBytes := osdpPacket.ToBytes()
-	packetBytesSizeWithoutChecksum := len(osdpPacketBytes) - 2
-	crc16Table := crc16.MakeTable(crc16.CRC16_AUG_CCITT)
-	checksumUint := crc16.Checksum(osdpPacketBytes[:packetBytesSizeWithoutChecksum], crc16Table)
-	checksum := make([]byte, 2)
-	binary.LittleEndian.PutUint16(checksum, checksumUint)
-	osdpPacket.lsbChecksum = checksum[0]
-	osdpPacket.msbChecksum = checksum[1]
+	osdpPacket.calculateCRC()
 	return osdpPacket, nil
 }
 
@@ -119,6 +111,12 @@ func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, sequenc
 		lsbChecksum: 0x00, msbChecksum: 0x00, secure: false, useMAC: false,
 	}
 
+	osdpPacket.calculateCRC()
+	return osdpPacket, nil
+}
+
+func (osdpPacket *OSDPPacket) calculateCRC() {
+
 	osdpPacketBytes := osdpPacket.ToBytes()
 	packetBytesSizeWithoutChecksum := len(osdpPacketBytes) - 2
 	crc16Table := crc16.MakeTable(crc16.CRC16_AUG_CCITT)
@@ -127,7 +125,6 @@ func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, sequenc
 	binary.LittleEndian.PutUint16(checksum, checksumUint)
 	osdpPacket.lsbChecksum = checksum[0]
 	osdpPacket.msbChecksum = checksum[1]
-	return osdpPacket, nil
 }
 
 func (osdpPacket *OSDPPacket) ToBytes() []byte {
@@ -255,7 +252,6 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 		}
 		return osdpPacket, err
 	}
-	// TODO: Use MAC
 	osdpPacket, err := NewSecurePacket(OSDPCode(msgCode), peripheralAddress, msgData, secureBlockType, secureBlockData, sequenceNumber, integrityCheck)
 	if err != nil {
 		return nil, err
