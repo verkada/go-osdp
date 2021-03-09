@@ -1,6 +1,7 @@
 package osdp
 
 import (
+	"io"
 	"time"
 )
 
@@ -40,7 +41,9 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 	for {
 		responseData, err := osdpMessenger.transceiver.Receive()
 		if err != nil {
-			return nil, err
+			if time.Since(timeStart) > timeout {
+				return nil, OSDPReceiveTimeoutError
+			}
 		}
 
 		payload = append(payload, responseData...)
@@ -59,7 +62,7 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 
 		}
 		// Keep Receiving until we get a valid packet, timeout or error
-		if err != PacketIncompleteError && err != InvalidSOMError {
+		if err != PacketIncompleteError && err != InvalidSOMError && err != io.EOF {
 			return nil, err
 		}
 		if time.Since(timeStart) > timeout {
