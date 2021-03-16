@@ -180,11 +180,12 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 
 	// Parse the message length
 	currentIndex++
-	var messageLength uint16 = uint16(payload[currentIndex] | (payload[currentIndex+1] << 8))
+	messageLength := uint16(payload[currentIndex]) + uint16(payload[currentIndex+1])<<8
 	bytesRemaining := messageLength - minimumPacketLengthUnsecure
 	if len(payload) < int(messageLength) {
 		return nil, PacketIncompleteError
 	}
+
 	// Check the message control info. TODO: Check for MAC
 	currentIndex += 2
 	msgControlInfo := payload[currentIndex]
