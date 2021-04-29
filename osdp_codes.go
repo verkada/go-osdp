@@ -64,3 +64,15 @@ const (
 	SCS_17 = 0x17
 	SCS_18 = 0x18
 )
+
+const (
+	ERR_BAD_CRC                   = 0x01
+	ERR_BAD_LEN                   = 0x02
+	ERR_BAD_CMD                   = 0x03
+	ERR_BAD_SEQ                   = 0x04
+	ERR_UNSUPPORTED_SEC           = 0x05
+	ERR_UNMET_SECURITY_CONDITIONS = 0x06
+	ERR_UNSUPPORTED_BIO_TYPE      = 0x07
+	ERR_UNSUPPORTED_BIO_FORMAT    = 0x08
+	ERR_UNKNOWN                   = 0x09
+)
