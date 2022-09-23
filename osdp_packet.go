@@ -116,7 +116,6 @@ func NewPacket(msgCode OSDPCode, peripheralAddress byte, msgData []byte, sequenc
 }
 
 func (osdpPacket *OSDPPacket) calculateCRC() {
-
 	osdpPacketBytes := osdpPacket.ToBytes()
 	packetBytesSizeWithoutChecksum := len(osdpPacketBytes) - 2
 	crc16Table := crc16.MakeTable(crc16.CRC16_AUG_CCITT)
@@ -150,7 +149,6 @@ func (osdpPacket *OSDPPacket) ToBytes() []byte {
 }
 
 func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
-
 	// Check that start of message follows OSDP spec
 	currentIndex := 0
 	startOfMessage := OSDPSOM
@@ -216,6 +214,9 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	}
 
 	currentIndex++
+	if len(payload) <= currentIndex {
+		return nil, PacketIncompleteError
+	}
 	// Check the message code
 	msgCode := payload[currentIndex]
 	currentIndex++
@@ -297,7 +298,6 @@ func (osdpPacket *OSDPPacket) GetSequenceNumber() byte {
 }
 
 func (osdpPacket *OSDPPacket) recalculateChecksum() {
-
 	osdpPacketBytes := osdpPacket.ToBytes()
 	packetBytesSizeWithoutChecksum := len(osdpPacketBytes) - 2
 	crc16Table := crc16.MakeTable(crc16.CRC16_AUG_CCITT)
