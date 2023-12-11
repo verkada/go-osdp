@@ -2,7 +2,6 @@ package osdp
 
 import (
 	"encoding/binary"
-	"fmt"
 
 	"github.com/sigurn/crc16"
 )
@@ -249,7 +248,6 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 		}
 
 		if lsbChecksum != osdpPacket.lsbChecksum || msbChecksum != osdpPacket.msbChecksum {
-			fmt.Println("Checksum failed: ", osdpPacket.lsbChecksum, " != ", lsbChecksum, osdpPacket.msbChecksum, " != ", msbChecksum, " Payload: ", payload)
 			return nil, ChecksumFailedError
 		}
 		return osdpPacket, err
@@ -261,7 +259,6 @@ func NewPacketFromBytes(payload []byte) (*OSDPPacket, error) {
 	osdpPacket.msgAuthenticationCode = MAC
 	osdpPacket.recalculateChecksum()
 	if lsbChecksum != osdpPacket.lsbChecksum || msbChecksum != osdpPacket.msbChecksum {
-		fmt.Println("Secure Checksum failed: ", osdpPacket.lsbChecksum, " != ", lsbChecksum, osdpPacket.msbChecksum, " != ", msbChecksum, " Payload: ", payload, " Generated: ", osdpPacket.ToBytes())
 		return nil, ChecksumFailedError
 	}
 
