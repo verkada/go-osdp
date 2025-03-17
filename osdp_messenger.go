@@ -1,7 +1,9 @@
 package osdp
 
 import (
+	"errors"
 	"io"
+	"log"
 	"time"
 )
 
@@ -64,6 +66,9 @@ func (osdpMessenger *OSDPMessenger) ReceiveResponse(timeout time.Duration) (*OSD
 		// Keep Receiving until we get a valid packet, timeout or error
 		if err != PacketIncompleteError && err != InvalidSOMError && err != io.EOF {
 			return nil, err
+		}
+		if errors.Is(err, io.EOF) {
+			log.Print("receive response eof failure: ", err)
 		}
 		if time.Since(timeStart) > timeout {
 			return nil, OSDPReceiveTimeoutError
